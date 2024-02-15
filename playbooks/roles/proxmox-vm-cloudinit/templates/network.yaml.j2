@@ -1,0 +1,13 @@
+network:
+  version: 1
+  config:
+    - type: physical
+      name: ens18
+      subnets:
+      - type: static
+        address: '{{ vm_ip_address }}'
+        netmask: '{{ vm_net_mask }}'
+        gateway: '{{ vm_gateway }}'
+    - type: nameserver
+      address: {{ vm_dns_servers }}
+      search: {{ vm_dns_search }}

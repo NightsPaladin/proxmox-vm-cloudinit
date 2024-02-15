@@ -1,0 +1,47 @@
+- name: Create Debian Cloud VM
+  hosts: pve01
+  remote_user: root
+
+  tasks:
+    - name: Build a Test VM on Proxmox
+      include_role:
+        name: proxmox-vm-cloudinit
+      vars:
+        vm_ip_address: 192.168.1.253
+        vm_os: 'debian'
+        vm_id: 9000
+        vm_name: 'debian-cloudinit'
+        vm_mem: 2048
+        vm_cpus: 1
+        vm_storage: 'local-lvm'
+        vm_disk_size: 5G
+        vm_delete: yes
+        vm_start: no
+        vm_startonboot: no
+        vm_image_download_path: '/tmp/cloud'
+        snippets_path: '/var/lib/vz/snippets'
+        snippets_storage: 'local:snippets'
+
+- name: Create Ubuntu Cloud VM
+  hosts: pve01
+  remote_user: root
+
+  tasks:
+    - name: Build a Test VM on Proxmox
+      include_role:
+        name: proxmox-vm-cloudinit
+      vars:
+        vm_ip_address: 192.168.1.254
+        vm_os: 'ubuntu'
+        vm_id: 9001
+        vm_name: 'ubuntu-cloudinit'
+        vm_mem: 2048
+        vm_cpus: 1
+        vm_storage: 'local-lvm'
+        vm_disk_size: 5G
+        vm_delete: yes
+        vm_start: no
+        vm_startonboot: no
+        vm_image_download_path: '/tmp/cloud'
+        snippets_path: '/var/lib/vz/snippets'
+        snippets_storage: 'local:snippets'

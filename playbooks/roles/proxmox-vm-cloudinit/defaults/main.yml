@@ -1,0 +1,22 @@
+vm_os: 'debian'
+vm_id: 8000
+vm_mem: 2048
+vm_cpus: 1
+vm_name: 'ansible-proxmox-vm'
+vm_image_download_path: '/tmp/cloud'
+snippets_path: '/tmp/snippets'
+snippets_storage: 'local:snippets'
+vm_storage: 'local-lvm'
+vm_disk_size: 32G
+vm_delete: no
+vm_start: no
+vm_startonboot: no
+vm_ip_address: 192.168.1.2
+vm_net_mask: 255.255.255.0
+vm_gateway: 192.168.1.1
+vm_dns_servers: |
+  - YOUR DNS SERVERS GO HERE
+vm_dns_search: |
+  - YOUR DNS SEARCH DOMAINS GO HERE
+ssh_authorized_keys: |
+  - YOUR SSH PUBLIC KEYS LIST GO HERE

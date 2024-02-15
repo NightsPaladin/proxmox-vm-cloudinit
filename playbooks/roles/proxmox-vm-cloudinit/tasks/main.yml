@@ -1,0 +1,105 @@
+- name: Debian Image Download
+  block:
+    - name: Check if the Debian Bookworm cloud image is already downloaded
+      ansible.builtin.stat:
+        path: '{{ vm_image_download_path }}/debian-12-generic-amd64.qcow2'
+      register: cloudimg_debian
+
+    - name: Download latest Debian Bookworm Cloud Image
+      ansible.builtin.uri:
+        url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2
+        dest: '{{ vm_image_download_path }}/'
+      when: not cloudimg_debian.stat.exists and cloudimg_debian.stat.mtime|int <= ansible_date_time.epoch|int - 604800
+  when: vm_os == 'debian'
+
+- name: Ubuntu Image Download
+  block:
+    - name: Check if the Ubuntu Jammy Cloud Image is already downloaded
+      ansible.builtin.stat:
+        path: '{{ vm_image_download_path }}/jammy-server-cloudimg-amd64.img'
+      register: cloudimg_ubuntu
+
+    - name: Download latest Ubuntu Jammy Cloud Image
+      ansible.builtin.uri:
+        url: https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+        dest: '{{ vm_image_download_path }}/'
+      when: not cloudimg_ubuntu.stat.exists and cloudimg_ubuntu.stat.mtime <= ansible_date_time.epoch|int - 604800
+  when: vm_os == 'ubuntu'
+
+- name: Stop the VM
+  ansible.builtin.shell:
+    cmd: 'qm stop {{ vm_id }}'
+  when: vm_delete
+  ignore_errors: true
+
+- name: Delete the VM
+  ansible.builtin.shell:
+    cmd: 'qm destroy {{ vm_id }}'
+  when: vm_delete
+  ignore_errors: true
+
+- name: Create the VM
+  ansible.builtin.shell:
+    cmd: |
+      qm create {{ vm_id }} \
+      --memory {{ vm_mem }} \
+      --cores {{ vm_cpus }} \
+      --name {{ vm_name }} \
+      --net0 virtio,bridge=vmbr0 \
+      --agent 1
+
+- name: Import the cloud image to {{ vm_storage }}
+  ansible.builtin.shell:
+    cmd: 'qm disk import {{ vm_id }} {{ vm_image_download_path }}/debian-12-generic-amd64.qcow2 {{ vm_storage }}'
+  when: vm_os == 'debian'
+
+- name: Import Cloud Image to {{ vm_storage }}
+  ansible.builtin.shell:
+    cmd: 'qm importdisk {{ vm_id }} {{ vm_image_download_path }}/jammy-server-cloudimg-amd64.img {{ vm_storage }}'
+  when: vm_os == 'ubuntu'
+
+- name: Attach the drive to the VM
+  ansible.builtin.shell:
+    cmd: 'qm set {{ vm_id }} --scsihw virtio-scsi-pci --scsi0 {{ vm_storage }}:vm-{{ vm_id }}-disk-0,discard=on,ssd=1'
+
+- name: Resize the VM disk
+  ansible.builtin.shell:
+    cmd: 'qm disk resize {{ vm_id }} scsi0 {{ vm_disk_size }}'
+
+- name: Attach the cloud-init drive
+  ansible.builtin.shell:
+    cmd: 'qm set {{ vm_id }} --ide2 {{ vm_storage }}:cloudinit'
+
+- name: Make the cloud-init drive bootable and restrict to boot from disk only
+  ansible.builtin.shell:
+    cmd: 'qm set {{ vm_id }} --boot c --bootdisk scsi0'
+
+- name: Add the serial console
+  ansible.builtin.shell:
+    cmd: 'qm set {{ vm_id }} --serial0 socket --vga serial0'
+
+- name: Copy userconfig template for VM Cloud Init
+  ansible.builtin.template:
+    src: userconfig.yaml.j2
+    dest: '{{ snippets_path }}/cloudinit-{{ vm_id }}-userconfig.yml'
+    force: true
+
+- name: Copy network template for VM Cloud Init
+  ansible.builtin.template:
+    src: network.yaml.j2
+    dest: '{{ snippets_path }}/cloudinit-{{ vm_id }}-network.yml'
+    force: true
+
+- name: Add custom cloud init config
+  ansible.builtin.shell:
+    cmd: 'qm set {{ vm_id }} --cicustom "user={{ snippets_storage }}/cloudinit-{{ vm_id }}-userconfig.yml,network={{ snippets_storage }}/cloudinit-{{ vm_id }}-network.yml"'
+
+- name: Set VM to Start on Boot
+  ansible.builtin.shell:
+    cmd: 'qm set {{ vm_id }} --onboot 1'
+  when: vm_onboot == 'yes'
+
+- name: Start the VM
+  ansible.builtin.shell:
+    cmd: 'qm start {{ vm_id }}'
+  when: vm_start == 'yes'
